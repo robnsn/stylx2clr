@@ -468,18 +468,22 @@
   const _upMsg     = document.getElementById('updateMsg');
   const _upDismiss = document.getElementById('updateDismiss');
 
-  // localStorage key storing the last version the user dismissed
-  const _DISMISSED_KEY = 'stylx2clr_dismissed_version';
-  let   _latestVersion    = null;
+  let   _latestVersion = null;
   // Tracks the last user_check_epoch we've seen; null = not yet initialised
   // (first poll on startup sets it without triggering the user-check path)
-  let   _lastUserEpoch    = null;
+  let   _lastUserEpoch = null;
 
   _upDismiss.addEventListener('click', () => {
-    if (_latestVersion) {
-      localStorage.setItem(_DISMISSED_KEY, _latestVersion);
-    }
     _upBanner.classList.remove('visible');
+    if (_latestVersion) {
+      // Persist the dismissed version on disk via the backend so it survives
+      // app restarts (pywebview's WKWebView does not reliably persist localStorage)
+      fetch('/update/dismiss', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({version: _latestVersion}),
+      });
+    }
   });
 
   async function openDownloadPage() {
@@ -499,7 +503,7 @@
         // was already running, not just from a fresh start).
         const userInitiated = _lastUserEpoch !== null && epoch > _lastUserEpoch;
 
-        if (userInitiated || localStorage.getItem(_DISMISSED_KEY) !== d.latest) {
+        if (userInitiated || d.dismissed_version !== d.latest) {
           _upMsg.textContent = `v${d.latest} is available.`;
           _upBanner.classList.add('visible');
         }
