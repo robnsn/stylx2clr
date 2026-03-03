@@ -124,8 +124,9 @@ def _check_worker() -> None:
         )
         with urllib.request.urlopen(req, timeout=5) as r:
             latest = r.read().decode().strip()
-    except Exception as exc:
-        _set(status='error', error=str(exc))
+    except Exception:
+        # Network unavailable or transient error — silently give up
+        _set(status='idle')
         return
 
     if _parse_ver(latest) > _parse_ver(APP_VERSION):

@@ -496,6 +496,15 @@
         clearInterval(_upTimer);
         _upTimer = null;
 
+      } else if (d.status === 'error' && d.error) {
+        // Only surface download errors — version-check network failures are silenced upstream
+        _upBanner.classList.add('visible');
+        _upMsg.textContent = `Update failed: ${d.error}`;
+        _upTrack.style.display   = 'none';
+        _upInstall.style.display = 'none';
+        clearInterval(_upTimer);
+        _upTimer = null;
+
       } else if (d.status === 'up_to_date' || d.status === 'error' || d.status === 'idle') {
         clearInterval(_upTimer);
         _upTimer = null;
