@@ -468,22 +468,12 @@
   const _upMsg     = document.getElementById('updateMsg');
   const _upDismiss = document.getElementById('updateDismiss');
 
-  let   _latestVersion = null;
-  // Tracks the last user_check_epoch we've seen; null = not yet initialised
-  // (first poll on startup sets it without triggering the user-check path)
-  let   _lastUserEpoch = null;
+  let _dismissed = false;
+  let _updateInterval;
 
   _upDismiss.addEventListener('click', () => {
+    _dismissed = true;
     _upBanner.classList.remove('visible');
-    if (_latestVersion) {
-      // Persist the dismissed version on disk via the backend so it survives
-      // app restarts (pywebview's WKWebView does not reliably persist localStorage)
-      fetch('/update/dismiss', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({version: _latestVersion}),
-      });
-    }
   });
 
   async function openDownloadPage() {
@@ -491,34 +481,20 @@
   }
 
   async function _pollUpdate() {
+    if (_dismissed) return;
     try {
       const d = await fetch('/update/status').then(r => r.json());
-
       if (d.status === 'available' && d.latest) {
-        _latestVersion = d.latest;
-        const epoch = d.user_check_epoch ?? 0;
-
-        // userInitiated is true only when the epoch advanced after we've already
-        // seen at least one poll (i.e. the menu-bar action fired while the app
-        // was already running, not just from a fresh start).
-        const userInitiated = _lastUserEpoch !== null && epoch > _lastUserEpoch;
-
-        if (userInitiated || d.dismissed_version !== d.latest) {
-          _upMsg.textContent = `v${d.latest} is available.`;
-          _upBanner.classList.add('visible');
-        }
-
-        _lastUserEpoch = epoch;
-      } else {
-        // For non-available statuses, seed the epoch tracker without touching the banner
-        const epoch = d.user_check_epoch ?? 0;
-        if (_lastUserEpoch === null) _lastUserEpoch = epoch;
+        _upMsg.textContent = `v${d.latest} is available.`;
+        _upBanner.classList.add('visible');
+        clearInterval(_updateInterval);
+      } else if (d.status !== 'checking') {
+        clearInterval(_updateInterval);
       }
     } catch (_) { /* network unavailable — silently ignore */ }
   }
 
-  // Poll continuously so the banner responds to menu-bar "Check for Updates"
-  setInterval(_pollUpdate, 3000);
+  _updateInterval = setInterval(_pollUpdate, 3000);
   _pollUpdate();
 
   /* ── Utilities ── */
