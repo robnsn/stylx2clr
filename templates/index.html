@@ -488,9 +488,10 @@
         _upMsg.textContent = `v${d.latest} is available.`;
         _upBanner.classList.add('visible');
         clearInterval(_updateInterval);
-      } else if (d.status !== 'checking') {
+      } else if (d.status === 'up_to_date' || d.status === 'error') {
         clearInterval(_updateInterval);
       }
+      // 'idle' and 'checking' keep the interval alive
     } catch (_) { /* network unavailable — silently ignore */ }
   }
 
