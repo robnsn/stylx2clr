@@ -139,9 +139,10 @@ def parse_stylx(path: str) -> list:
     Open a .stylx file and return a list of colour dicts.
 
     Each dict contains:
-        name  – swatch label (symbol name + layer context)
+        name   – swatch label (symbol name + layer context)
+        group  – category string from the Category column (or '' if absent)
         r, g, b, a  – float 0.0–1.0
-        hex   – '#rrggbb' string for preview
+        hex    – '#rrggbb' string for preview
     """
     results: list = []
 
@@ -152,21 +153,44 @@ def parse_stylx(path: str) -> list:
 
     try:
         cur = conn.cursor()
+
+        # Check whether the Items table has a Category column (most .stylx files do)
         try:
-            cur.execute('SELECT Name, Content FROM Items')
+            cur.execute('PRAGMA table_info(Items)')
+            has_category = any(row[1] == 'Category' for row in cur.fetchall())
+        except sqlite3.OperationalError:
+            has_category = False
+
+        try:
+            if has_category:
+                cur.execute('SELECT Name, Category, Content FROM Items')
+            else:
+                cur.execute('SELECT Name, Content FROM Items')
         except sqlite3.OperationalError as exc:
             raise ValueError(
                 f'Not a valid .stylx file (missing Items table): {exc}'
             ) from exc
 
-        for name, content in cur.fetchall():
+        for row in cur.fetchall():
+            if has_category:
+                name, category, content = row
+            else:
+                name, content = row
+                category = None
+
             if not content:
                 continue
             try:
-                data = json.loads(content)
+                data = json.loads(content.rstrip('\x00'))
             except (json.JSONDecodeError, TypeError):
                 continue
-            _walk(data, name or 'Unnamed', None, results)
+
+            group = (category or '').strip()
+            item_colors: list = []
+            _walk(data, name or 'Unnamed', None, item_colors)
+            for c in item_colors:
+                c['group'] = group
+            results.extend(item_colors)
 
     finally:
         conn.close()

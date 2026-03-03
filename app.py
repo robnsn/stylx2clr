@@ -1,22 +1,38 @@
 """
 stylx2clr — local web app
-Run with:  python3 app.py
-Then open: http://localhost:5000
+Run with:  python3 app.py  (or double-click the standalone binary)
+Then open: http://localhost:5000  (browser opens automatically)
 """
 
 import atexit
 import os
 import shutil
+import sys
 import tempfile
 import uuid
 from pathlib import Path
+
+from version import __version__ as APP_VERSION
+
+_UPDATE_VERSION_URL = 'https://raw.githubusercontent.com/robnsn/stylx2clr/main/version.txt'
+_UPDATE_RELEASES_URL = 'https://github.com/robnsn/stylx2clr/releases/latest'
+
+
+def _parse_version(v: str) -> tuple:
+    try:
+        return tuple(int(x) for x in v.strip().split('.') if x.isdigit())
+    except Exception:
+        return (0,)
 
 from flask import Flask, jsonify, render_template, request, send_file
 
 from clr_writer import write_clr
 from stylx_parser import parse_stylx
 
-app = Flask(__name__)
+# When frozen by PyInstaller, data files live under sys._MEIPASS
+_BASE_DIR = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(__name__, template_folder=os.path.join(_BASE_DIR, 'templates'))
 app.config['MAX_CONTENT_LENGTH'] = 256 * 1024 * 1024  # 256 MB upload limit
 
 # Temp directory shared across the session; cleaned up on exit
@@ -58,12 +74,111 @@ def upload():
     palette_name = Path(f.filename).stem
     _uploads[token] = (stylx_path, palette_name)
 
+    # Group colors by their Category (preserving order of first appearance)
+    seen: list = []
+    buckets: dict = {}
+    for color in colors:
+        g = color.get('group') or ''
+        if g not in buckets:
+            buckets[g] = []
+            seen.append(g)
+        buckets[g].append(color)
+
+    if len(seen) == 1 and seen[0] == '':
+        # No Category column — present everything as one unlabelled group
+        groups = [{'name': palette_name, 'colors': buckets['']}]
+    else:
+        groups = [{'name': g or 'Other', 'colors': buckets[g]} for g in seen]
+
     return jsonify({
         'token': token,
         'palette_name': palette_name,
         'count': len(colors),
-        'colors': colors,
+        'groups': groups,
     })
+
+
+@app.route('/check-update')
+def check_update():
+    """Compare the bundled version against version.txt on the main branch."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen(_UPDATE_VERSION_URL, timeout=4) as resp:
+            latest = resp.read().decode().strip()
+    except Exception:
+        return jsonify({'update_available': False})
+
+    update_available = _parse_version(latest) > _parse_version(APP_VERSION)
+    return jsonify({
+        'update_available': update_available,
+        'current': APP_VERSION,
+        'latest': latest,
+        'download_url': _UPDATE_RELEASES_URL,
+    })
+
+
+@app.route('/debug/<token>')
+def debug(token):
+    """Return diagnostic info about the raw .stylx content to help troubleshoot parsing."""
+    import sqlite3, json
+
+    if token not in _uploads:
+        return jsonify({'error': 'Token not found. Re-upload the file first.'}), 404
+
+    stylx_path, _ = _uploads[token]
+    result = {}
+
+    try:
+        conn = sqlite3.connect(f'file:{stylx_path}?mode=ro', uri=True)
+        cur = conn.cursor()
+
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        result['tables'] = [r[0] for r in cur.fetchall()]
+
+        try:
+            cur.execute('PRAGMA table_info(Items)')
+            result['items_columns'] = [r[1] for r in cur.fetchall()]
+        except Exception as e:
+            result['items_columns_error'] = str(e)
+
+        try:
+            cur.execute('SELECT COUNT(*) FROM Items')
+            result['row_count'] = cur.fetchone()[0]
+        except Exception:
+            result['row_count'] = 'unknown'
+
+        try:
+            cur.execute('SELECT Name, Content FROM Items LIMIT 1')
+            row = cur.fetchone()
+            if row:
+                name, content = row
+                result['sample_name'] = name
+                result['sample_content_snippet'] = (content or '')[:500]
+                try:
+                    data = json.loads(content)
+                    result['sample_top_level_keys'] = list(data.keys()) if isinstance(data, dict) else f'type={type(data).__name__}'
+                    types_found = []
+                    def collect_types(node):
+                        if isinstance(node, dict):
+                            if 'type' in node:
+                                types_found.append(node['type'])
+                            for v in node.values():
+                                collect_types(v)
+                        elif isinstance(node, list):
+                            for item in node:
+                                collect_types(item)
+                    collect_types(data)
+                    result['all_type_values_in_first_row'] = sorted(set(types_found))
+                except Exception as e:
+                    result['json_parse_error'] = str(e)
+        except Exception as e:
+            result['sample_error'] = str(e)
+
+        conn.close()
+    except Exception as e:
+        result['db_error'] = str(e)
+
+    return jsonify(result)
 
 
 @app.route('/download/<token>')
@@ -96,7 +211,31 @@ def download(token):
 
 
 if __name__ == '__main__':
-    print('stylx2clr is running.')
-    print('Open http://localhost:5000 in your browser.')
-    print('Press Ctrl+C to stop.')
-    app.run(host='127.0.0.1', port=5000, debug=False)
+    import socket
+    import threading
+    import time
+    import webview
+
+    def _free_port(start: int = 5000) -> int:
+        """Return the first free TCP port at or after start."""
+        for port in range(start, start + 20):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('127.0.0.1', port))
+                    return port
+                except OSError:
+                    continue
+        return start
+
+    port = _free_port()
+    url = f'http://localhost:{port}'
+
+    # Flask runs in a daemon thread — dies automatically when the window closes
+    threading.Thread(
+        target=lambda: app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False),
+        daemon=True,
+    ).start()
+    time.sleep(0.5)  # let Flask start before the window tries to load
+
+    webview.create_window('stylx2clr', url, width=960, height=700, min_size=(600, 500))
+    webview.start()  # blocks until the window is closed, then the process exits
