@@ -66,6 +66,70 @@ def upload():
     })
 
 
+@app.route('/debug/<token>')
+def debug(token):
+    """Return diagnostic info about the raw .stylx content to help troubleshoot parsing."""
+    import sqlite3, json
+
+    if token not in _uploads:
+        return jsonify({'error': 'Token not found. Re-upload the file first.'}), 404
+
+    stylx_path, _ = _uploads[token]
+    result = {}
+
+    try:
+        conn = sqlite3.connect(f'file:{stylx_path}?mode=ro', uri=True)
+        cur = conn.cursor()
+
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        result['tables'] = [r[0] for r in cur.fetchall()]
+
+        try:
+            cur.execute('PRAGMA table_info(Items)')
+            result['items_columns'] = [r[1] for r in cur.fetchall()]
+        except Exception as e:
+            result['items_columns_error'] = str(e)
+
+        try:
+            cur.execute('SELECT COUNT(*) FROM Items')
+            result['row_count'] = cur.fetchone()[0]
+        except Exception:
+            result['row_count'] = 'unknown'
+
+        try:
+            cur.execute('SELECT Name, Content FROM Items LIMIT 1')
+            row = cur.fetchone()
+            if row:
+                name, content = row
+                result['sample_name'] = name
+                result['sample_content_snippet'] = (content or '')[:500]
+                try:
+                    data = json.loads(content)
+                    result['sample_top_level_keys'] = list(data.keys()) if isinstance(data, dict) else f'type={type(data).__name__}'
+                    types_found = []
+                    def collect_types(node):
+                        if isinstance(node, dict):
+                            if 'type' in node:
+                                types_found.append(node['type'])
+                            for v in node.values():
+                                collect_types(v)
+                        elif isinstance(node, list):
+                            for item in node:
+                                collect_types(item)
+                    collect_types(data)
+                    result['all_type_values_in_first_row'] = sorted(set(types_found))
+                except Exception as e:
+                    result['json_parse_error'] = str(e)
+        except Exception as e:
+            result['sample_error'] = str(e)
+
+        conn.close()
+    except Exception as e:
+        result['db_error'] = str(e)
+
+    return jsonify(result)
+
+
 @app.route('/download/<token>')
 def download(token):
     """Generate and serve the .clr file for a previously uploaded .stylx."""
