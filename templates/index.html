@@ -439,13 +439,18 @@
       const response = await fetch(`/download/${currentToken}`);
       const data = await response.json();
 
+      if (data.cancelled) {
+        // User dismissed the save dialog — restore button silently
+        return;
+      }
+
       if (!response.ok) {
         setStatus('error', escHtml(data.error || 'Download failed.'));
         return;
       }
 
       setStatus('success',
-        `Saved <strong>${escHtml(data.filename)}</strong> to your Downloads folder — ` +
+        `Saved <strong>${escHtml(data.filename)}</strong> — ` +
         `install it by double-clicking or placing it in <code>~/Library/Colors/</code>.`
       );
     } finally {

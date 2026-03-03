@@ -196,14 +196,31 @@ def download(token):
         return jsonify({'error': f'Conversion failed: {exc}'}), 500
 
     filename = f'{palette_name}.clr'
-    dest = Path.home() / 'Downloads' / filename
-    shutil.copy2(clr_path, dest)
 
-    # Reveal the saved file in Finder
+    # Show a native save dialog so the user can choose where to save
+    import tkinter as tk
+    from tkinter import filedialog
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes('-topmost', True)
+    save_path = filedialog.asksaveasfilename(
+        defaultextension='.clr',
+        filetypes=[('Color palette', '*.clr')],
+        initialfile=filename,
+        initialdir=str(Path.home() / 'Downloads'),
+        title='Save Color Palette',
+        parent=root,
+    )
+    root.destroy()
+
+    if not save_path:
+        return jsonify({'cancelled': True})
+
     import subprocess
-    subprocess.run(['open', '-R', str(dest)], capture_output=True)
+    shutil.copy2(clr_path, save_path)
+    subprocess.run(['open', '-R', save_path], capture_output=True)
 
-    return jsonify({'filename': filename, 'saved_to': str(dest)})
+    return jsonify({'filename': os.path.basename(save_path), 'saved_to': save_path})
 
 
 if __name__ == '__main__':
