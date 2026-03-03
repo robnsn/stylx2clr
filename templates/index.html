@@ -49,7 +49,6 @@
       font-size: 14px;
     }
     .update-banner.visible { display: flex; }
-    .update-banner a { color: var(--accent); font-weight: 600; }
     .update-dismiss {
       background: none;
       border: none;
@@ -59,6 +58,34 @@
       line-height: 1;
       padding: 0;
     }
+    .update-progress-track {
+      width: 120px;
+      height: 6px;
+      background: rgba(0,0,0,0.12);
+      border-radius: 3px;
+      overflow: hidden;
+      display: none;
+    }
+    .update-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .update-install-btn {
+      padding: 5px 12px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: none;
+    }
+    .update-install-btn:hover { background: #005bbf; }
+    .update-install-btn:disabled { opacity: 0.6; cursor: default; }
 
     header {
       text-align: center;
@@ -247,7 +274,10 @@
 
 <div class="update-banner" id="updateBanner">
   <span id="updateMsg"></span>
-  <a id="updateLink" href="" target="_blank">Download</a>
+  <div class="update-progress-track" id="updateProgressTrack">
+    <div class="update-progress-fill" id="updateProgressFill"></div>
+  </div>
+  <button class="update-install-btn" id="updateInstallBtn" onclick="installUpdate()">Install &amp; Relaunch</button>
   <button class="update-dismiss" onclick="document.getElementById('updateBanner').classList.remove('visible')" aria-label="Dismiss">✕</button>
 </div>
 
@@ -434,20 +464,65 @@
     }
   });
 
-  /* ── Auto-update check (runs silently on load) ── */
-  (async () => {
+  /* ── Auto-update (polls /update/status every 2 s) ── */
+  const _upBanner   = document.getElementById('updateBanner');
+  const _upMsg      = document.getElementById('updateMsg');
+  const _upTrack    = document.getElementById('updateProgressTrack');
+  const _upFill     = document.getElementById('updateProgressFill');
+  const _upInstall  = document.getElementById('updateInstallBtn');
+  let   _upTimer    = null;
+
+  async function _pollUpdate() {
     try {
-      const resp = await fetch('/check-update');
-      if (!resp.ok) return;
-      const d = await resp.json();
-      if (d.update_available) {
-        document.getElementById('updateMsg').textContent =
-          `Update available: v${d.latest} (you have v${d.current}) —`;
-        document.getElementById('updateLink').href = d.download_url;
-        document.getElementById('updateBanner').classList.add('visible');
+      const d = await fetch('/update/status').then(r => r.json());
+
+      if (d.status === 'downloading') {
+        _upBanner.classList.add('visible');
+        _upMsg.textContent = `Downloading update v${d.latest}\u2026`;
+        _upTrack.style.display   = 'block';
+        _upFill.style.width      = `${Math.round((d.progress || 0) * 100)}%`;
+        _upInstall.style.display = 'none';
+
+      } else if (d.status === 'ready') {
+        _upBanner.classList.add('visible');
+        _upMsg.textContent       = `v${d.latest} ready to install.`;
+        _upTrack.style.display   = 'none';
+        _upInstall.style.display = 'inline-block';
+        // Done — stop polling
+        clearInterval(_upTimer);
+        _upTimer = null;
+
+      } else if (d.status === 'available' && !d.is_frozen) {
+        // Running from source: can't auto-install, just inform
+        _upBanner.classList.add('visible');
+        _upMsg.textContent = `v${d.latest} available — update your source and restart.`;
+        _upTrack.style.display   = 'none';
+        _upInstall.style.display = 'none';
+        clearInterval(_upTimer);
+        _upTimer = null;
+
+      } else if (d.status === 'up_to_date' || d.status === 'error' || d.status === 'idle') {
+        clearInterval(_upTimer);
+        _upTimer = null;
       }
-    } catch (_) { /* network unavailable — silently skip */ }
-  })();
+    } catch (_) { /* network unavailable — silently ignore */ }
+  }
+
+  async function installUpdate() {
+    _upInstall.disabled    = true;
+    _upInstall.textContent = 'Installing\u2026';
+    try {
+      await fetch('/update/install', { method: 'POST' });
+      // os._exit(0) is called server-side; window will close on its own
+    } catch (_) {
+      _upInstall.disabled    = false;
+      _upInstall.textContent = 'Install & Relaunch';
+    }
+  }
+
+  // Start polling immediately on load
+  _upTimer = setInterval(_pollUpdate, 2000);
+  _pollUpdate();
 
   /* ── Utilities ── */
   function escHtml(str) {

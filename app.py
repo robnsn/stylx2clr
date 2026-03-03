@@ -1,7 +1,6 @@
 """
 stylx2clr — local web app
 Run with:  python3 app.py  (or double-click the standalone binary)
-Then open: http://localhost:5000  (browser opens automatically)
 """
 
 import atexit
@@ -12,18 +11,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from version import __version__ as APP_VERSION
-
-_UPDATE_VERSION_URL = 'https://raw.githubusercontent.com/robnsn/stylx2clr/main/version.txt'
-_UPDATE_RELEASES_URL = 'https://github.com/robnsn/stylx2clr/releases/latest'
-
-
-def _parse_version(v: str) -> tuple:
-    try:
-        return tuple(int(x) for x in v.strip().split('.') if x.isdigit())
-    except Exception:
-        return (0,)
-
+import updater as _updater
 from flask import Flask, jsonify, render_template, request, send_file
 
 from clr_writer import write_clr
@@ -98,24 +86,25 @@ def upload():
     })
 
 
-@app.route('/check-update')
-def check_update():
-    """Compare the bundled version against version.txt on the main branch."""
-    import urllib.request
+# ── Update routes ─────────────────────────────────────────────────────────────
+
+@app.route('/update/status')
+def update_status():
+    """Return the current state of the background updater."""
+    return jsonify(_updater.get_state())
+
+
+@app.route('/update/install', methods=['POST'])
+def update_install():
+    """Swap in the downloaded update and exit so the install script can relaunch."""
     try:
-        with urllib.request.urlopen(_UPDATE_VERSION_URL, timeout=4) as resp:
-            latest = resp.read().decode().strip()
-    except Exception:
-        return jsonify({'update_available': False})
+        _updater.install_and_relaunch()  # does not return — calls os._exit(0)
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+    return jsonify({'ok': True})  # unreachable, but satisfies type checkers
 
-    update_available = _parse_version(latest) > _parse_version(APP_VERSION)
-    return jsonify({
-        'update_available': update_available,
-        'current': APP_VERSION,
-        'latest': latest,
-        'download_url': _UPDATE_RELEASES_URL,
-    })
 
+# ── Debug / download ──────────────────────────────────────────────────────────
 
 @app.route('/debug/<token>')
 def debug(token):
@@ -236,6 +225,9 @@ if __name__ == '__main__':
         daemon=True,
     ).start()
     time.sleep(0.5)  # let Flask start before the window tries to load
+
+    # Kick off the background update check now that Flask is ready to serve /update/status
+    _updater.start_check()
 
     webview.create_window('stylx2clr', url, width=960, height=700, min_size=(600, 500))
     webview.start()  # blocks until the window is closed, then the process exits
