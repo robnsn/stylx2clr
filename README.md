@@ -10,11 +10,10 @@ Runs entirely on your machine — your files are never uploaded anywhere.
 
 ## Option A — Standalone app (recommended for teams)
 
-Download `stylx2clr.zip` from the Releases page, unzip it, and double-click
-`stylx2clr.app`. Your browser opens automatically.
+Download `stylx2clr.dmg` from the Releases page, open it, and double-click
+`stylx2clr.app`. The app opens in its own window — no browser tab.
 
-To quit: right-click the Dock icon → **Quit** (or press **⌘Q** while the app
-is focused).
+To quit: **⌘Q** or right-click the Dock icon → **Quit**.
 
 ---
 
@@ -30,6 +29,7 @@ is focused).
 ```bash
 pip3 install -r requirements.txt
 python3 app.py
+# Opens in its own window via pywebview
 ```
 
 ---
@@ -48,14 +48,17 @@ source .venv/bin/activate
 pip install -r requirements-build.txt
 pyinstaller stylx2clr.spec
 
-# Package for sharing
-zip -r stylx2clr.zip dist/stylx2clr.app
+# Package as a DMG (hdiutil is built into macOS — no extra tools needed)
+hdiutil create -volname "stylx2clr" \
+  -srcfolder dist/stylx2clr.app \
+  -ov -format UDZO \
+  dist/stylx2clr.dmg
 
 deactivate
 ```
 
-Send `stylx2clr.zip` to your team. They unzip and double-click — no Python,
-no terminal, no setup required.
+Share `dist/stylx2clr.dmg`. Recipients open the DMG, double-click the app —
+no Python, no browser, no setup required. The app opens in its own window.
 
 **Tip:** To add a custom Dock icon, place a `stylx2clr.icns` file next to
 `app.py` before building and set `icon='stylx2clr.icns'` in the spec.

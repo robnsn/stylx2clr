@@ -5,8 +5,8 @@
 # Build:
 #   pyinstaller stylx2clr.spec
 #
-# Output:  dist/stylx2clr.app
-# Distribute:  zip -r stylx2clr.zip dist/stylx2clr.app && share the zip
+# Then package as DMG:
+#   hdiutil create -volname "stylx2clr" -srcfolder dist/stylx2clr.app -ov -format UDZO dist/stylx2clr.dmg
 
 a = Analysis(
     ['app.py'],
@@ -21,6 +21,8 @@ a = Analysis(
         'werkzeug',
         'werkzeug.serving',
         'sqlite3',
+        'webview',
+        'webview.platforms.cocoa',
     ],
     hookspath=[],
     hooksconfig={},

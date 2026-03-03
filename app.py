@@ -166,7 +166,8 @@ def download(token):
 if __name__ == '__main__':
     import socket
     import threading
-    import webbrowser
+    import time
+    import webview
 
     def _free_port(start: int = 5000) -> int:
         """Return the first free TCP port at or after start."""
@@ -181,7 +182,13 @@ if __name__ == '__main__':
 
     port = _free_port()
     url = f'http://localhost:{port}'
-    threading.Timer(1.2, lambda: webbrowser.open(url)).start()
-    print(f'stylx2clr  →  {url}')
-    print('Close this window (or press Ctrl+C) to quit.')
-    app.run(host='127.0.0.1', port=port, debug=False)
+
+    # Flask runs in a daemon thread — dies automatically when the window closes
+    threading.Thread(
+        target=lambda: app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False),
+        daemon=True,
+    ).start()
+    time.sleep(0.5)  # let Flask start before the window tries to load
+
+    webview.create_window('stylx2clr', url, width=960, height=700, min_size=(600, 500))
+    webview.start()  # blocks until the window is closed, then the process exits
