@@ -437,27 +437,17 @@
 
     try {
       const response = await fetch(`/download/${currentToken}`);
+      const data = await response.json();
 
       if (!response.ok) {
-        const errData = await response.json();
-        setStatus('error', escHtml(errData.error || 'Download failed.'));
+        setStatus('error', escHtml(data.error || 'Download failed.'));
         return;
       }
 
-      const blob = await response.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-
-      const disp  = response.headers.get('Content-Disposition') || '';
-      const match = disp.match(/filename="?([^"]+)"?/);
-      a.download = match ? match[1] : 'palette.clr';
-      a.href = url;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      setStatus('success', `Downloaded <strong>${escHtml(a.download)}</strong>. Install it by double-clicking or placing it in <code>~/Library/Colors/</code>.`);
+      setStatus('success',
+        `Saved <strong>${escHtml(data.filename)}</strong> to your Downloads folder — ` +
+        `install it by double-clicking or placing it in <code>~/Library/Colors/</code>.`
+      );
     } finally {
       btnDownload.textContent = '⬇\u00a0 Download .clr Palette';
       btnDownload.disabled = false;
