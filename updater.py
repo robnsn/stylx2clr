@@ -18,11 +18,13 @@ _RELEASES_URL = 'https://github.com/robnsn/stylx2clr/releases/latest'
 _lock = threading.Lock()
 _state: dict = {
     # status: idle | checking | up_to_date | available | error
-    'status':       'idle',
-    'current':      APP_VERSION,
-    'latest':       None,
-    'download_url': _RELEASES_URL,
-    'error':        None,
+    'status':          'idle',
+    'current':         APP_VERSION,
+    'latest':          None,
+    'download_url':    _RELEASES_URL,
+    'error':           None,
+    # incremented each time start_check() is called by the user (menu bar)
+    'user_check_epoch': 0,
 }
 
 
@@ -47,7 +49,9 @@ def _parse_ver(v: str) -> tuple:
 
 def start_check() -> None:
     """Kick off a background version check. Safe to call multiple times."""
-    _set(status='checking', latest=None, error=None)
+    with _lock:
+        _state['user_check_epoch'] += 1
+        _state.update(status='checking', latest=None, error=None)
     threading.Thread(target=_check_worker, daemon=True).start()
 
 
