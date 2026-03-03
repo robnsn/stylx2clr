@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>stylx → clr</title>
+  <style>
+    :root {
+      --bg:      #f5f5f7;
+      --card:    #ffffff;
+      --accent:  #0071e3;
+      --text:    #1d1d1f;
+      --muted:   #6e6e73;
+      --border:  #d2d2d7;
+      --success-bg: #f0fff4;
+      --success-fg: #1a7f3c;
+      --error-bg:   #fff0f0;
+      --error-fg:   #c0392b;
+      --info-bg:    #f0f4ff;
+      --info-fg:    #0071e3;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 64px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    h1 {
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 15px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 36px;
+      width: 100%;
+      max-width: 700px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      position: relative;
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      padding: 52px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .drop-zone.over {
+      border-color: var(--accent);
+      background: rgba(0,113,227,0.04);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      font-size: 0;
+    }
+
+    .drop-icon { font-size: 44px; margin-bottom: 12px; }
+
+    .drop-label {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .drop-hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    /* ── Status banner ── */
+    .status {
+      display: none;
+      margin-top: 20px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .status.info    { display: block; background: var(--info-bg);    color: var(--info-fg); }
+    .status.success { display: block; background: var(--success-bg); color: var(--success-fg); }
+    .status.error   { display: block; background: var(--error-bg);   color: var(--error-fg); }
+
+    /* ── Download button ── */
+    .btn-download {
+      display: none;
+      margin-top: 20px;
+      width: 100%;
+      padding: 15px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-download:hover  { background: #005bbf; }
+    .btn-download:active { transform: scale(0.98); }
+    .btn-download.visible { display: block; }
+
+    /* ── Colour swatches ── */
+    .palette-header {
+      display: none;
+      margin-top: 28px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .palette-header.visible { display: block; }
+
+    .color-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .swatch {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.12);
+      position: relative;
+      flex-shrink: 0;
+      /* checkerboard background shows through transparent swatches */
+      background-image:
+        linear-gradient(45deg, #ccc 25%, transparent 25%),
+        linear-gradient(-45deg, #ccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ccc 75%),
+        linear-gradient(-45deg, transparent 75%, #ccc 75%);
+      background-size: 8px 8px;
+      background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+    }
+
+    .swatch-fill {
+      position: absolute;
+      inset: 0;
+      border-radius: 7px;
+    }
+
+    /* Tooltip */
+    .swatch:hover .swatch-tooltip {
+      display: block;
+    }
+
+    .swatch-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 7px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(29,29,31,0.88);
+      color: #fff;
+      padding: 5px 9px;
+      border-radius: 7px;
+      font-size: 11px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .color-count {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>stylx &rarr; clr</h1>
+  <p class="subtitle">Convert ArcGIS .stylx symbol files to macOS color palettes — locally, no uploads</p>
+</header>
+
+<div class="card">
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".stylx">
+    <div class="drop-icon">🗂️</div>
+    <div class="drop-label">Drop a .stylx file here</div>
+    <div class="drop-hint">or click to browse &mdash; your file never leaves this machine</div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <button class="btn-download" id="btnDownload">
+    ⬇&nbsp; Download .clr Palette
+  </button>
+
+  <div class="palette-header" id="paletteHeader">Preview</div>
+  <div class="color-grid"  id="colorGrid"></div>
+  <div class="color-count" id="colorCount"></div>
+
+</div>
+
+<script>
+  const dropZone     = document.getElementById('dropZone');
+  const fileInput    = document.getElementById('fileInput');
+  const statusEl     = document.getElementById('status');
+  const btnDownload  = document.getElementById('btnDownload');
+  const colorGrid    = document.getElementById('colorGrid');
+  const colorCount   = document.getElementById('colorCount');
+  const paletteHeader = document.getElementById('paletteHeader');
+
+  let currentToken = null;
+
+  /* ── Drag-and-drop ── */
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('over');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  /* ── Status helpers ── */
+  function setStatus(type, msg) {
+    statusEl.className = `status ${type}`;
+    statusEl.innerHTML = msg;
+  }
+
+  function clearStatus() {
+    statusEl.className = 'status';
+    statusEl.textContent = '';
+  }
+
+  /* ── Main handler ── */
+  async function handleFile(file) {
+    if (!file.name.toLowerCase().endsWith('.stylx')) {
+      setStatus('error', 'Please select a <strong>.stylx</strong> file.');
+      return;
+    }
+
+    // Reset UI
+    colorGrid.innerHTML = '';
+    colorCount.textContent = '';
+    paletteHeader.classList.remove('visible');
+    btnDownload.classList.remove('visible');
+    currentToken = null;
+
+    setStatus('info', `Parsing <strong>${escHtml(file.name)}</strong>&hellip;`);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    let data;
+    try {
+      const response = await fetch('/upload', { method: 'POST', body: formData });
+      data = await response.json();
+      if (!response.ok) {
+        setStatus('error', escHtml(data.error || 'Upload failed.'));
+        return;
+      }
+    } catch (err) {
+      setStatus('error', `Network error: ${escHtml(err.message)}`);
+      return;
+    }
+
+    currentToken = data.token;
+    const n = data.count;
+
+    if (n === 0) {
+      setStatus('error', 'No colours found in this file. Make sure it contains symbol definitions with colour fills, strokes, or markers.');
+      return;
+    }
+
+    setStatus('success',
+      `Found <strong>${n}</strong> colour swatch${n !== 1 ? 'es' : ''} in <strong>${escHtml(file.name)}</strong>.`
+    );
+
+    // Render swatches
+    paletteHeader.classList.add('visible');
+    data.colors.forEach(c => {
+      const outer = document.createElement('div');
+      outer.className = 'swatch';
+
+      const fill = document.createElement('div');
+      fill.className = 'swatch-fill';
+      fill.style.backgroundColor = hexWithAlpha(c.hex, c.a);
+
+      const tip = document.createElement('div');
+      tip.className = 'swatch-tooltip';
+      tip.textContent = c.name;
+
+      outer.appendChild(fill);
+      outer.appendChild(tip);
+      colorGrid.appendChild(outer);
+    });
+
+    colorCount.textContent = `${n} swatches — hover for name`;
+    btnDownload.classList.add('visible');
+  }
+
+  /* ── Download ── */
+  btnDownload.addEventListener('click', async () => {
+    if (!currentToken) return;
+
+    btnDownload.textContent = '⏳  Generating .clr…';
+    btnDownload.disabled = true;
+
+    try {
+      const response = await fetch(`/download/${currentToken}`);
+
+      if (!response.ok) {
+        const data = await response.json();
+        setStatus('error', escHtml(data.error || 'Download failed.'));
+        return;
+      }
+
+      // Trigger browser download
+      const blob = await response.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+
+      // Get suggested filename from Content-Disposition header
+      const disp = response.headers.get('Content-Disposition') || '';
+      const match = disp.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : 'palette.clr';
+      a.href = url;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setStatus('success', `Downloaded <strong>${escHtml(a.download)}</strong>. Install it by double-clicking or placing it in <code>~/Library/Colors/</code>.`);
+    } finally {
+      btnDownload.textContent = '⬇\u00a0 Download .clr Palette';
+      btnDownload.disabled = false;
+    }
+  });
+
+  /* ── Utilities ── */
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function hexWithAlpha(hex, a) {
+    // Return an rgba() string for CSS so partial-opacity swatches look right
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    return `rgba(${r},${g},${b},${a.toFixed(3)})`;
+  }
+</script>
+</body>
+</html>
