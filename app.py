@@ -73,15 +73,15 @@ def upload():
             seen.append(g)
         buckets[g].append(color)
 
-    # Sort colors within each group alphabetically; group order is kept
-    for bucket in buckets.values():
-        bucket.sort(key=lambda c: c.get('name', '').casefold())
-
     if len(seen) == 1 and seen[0] == '':
         # No Category column — present everything as one unlabelled group
         groups = [{'name': palette_name, 'colors': buckets['']}]
     else:
-        groups = [{'name': g or 'Other', 'colors': buckets[g]} for g in seen]
+        # Sort groups alphabetically; color order within each group is preserved
+        groups = sorted(
+            [{'name': g or 'Other', 'colors': buckets[g]} for g in seen],
+            key=lambda grp: grp['name'].casefold(),
+        )
 
     return jsonify({
         'token': token,
