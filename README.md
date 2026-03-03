@@ -39,11 +39,19 @@ python3 app.py
 You need a Mac to build (and to use — the `.clr` format is macOS-specific).
 
 ```bash
-pip3 install -r requirements-build.txt
+git pull
+
+# Create a throw-away virtual environment (avoids PATH / permission issues)
+python3 -m venv .venv
+source .venv/bin/activate
+
+pip install -r requirements-build.txt
 pyinstaller stylx2clr.spec
 
 # Package for sharing
 zip -r stylx2clr.zip dist/stylx2clr.app
+
+deactivate
 ```
 
 Send `stylx2clr.zip` to your team. They unzip and double-click — no Python,
