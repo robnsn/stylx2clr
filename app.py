@@ -196,31 +196,44 @@ def download(token):
         return jsonify({'error': f'Conversion failed: {exc}'}), 500
 
     filename = f'{palette_name}.clr'
+    downloads_dir = str(Path.home() / 'Downloads')
 
-    # Show a native save dialog so the user can choose where to save
-    import tkinter as tk
-    from tkinter import filedialog
-    root = tk.Tk()
-    root.withdraw()
-    root.wm_attributes('-topmost', True)
-    save_path = filedialog.asksaveasfilename(
-        defaultextension='.clr',
-        filetypes=[('Color palette', '*.clr')],
-        initialfile=filename,
-        initialdir=str(Path.home() / 'Downloads'),
-        title='Save Color Palette',
-        parent=root,
-    )
-    root.destroy()
-
-    if not save_path:
-        return jsonify({'cancelled': True})
-
+    # Use native macOS save dialog via osascript
     import subprocess
-    shutil.copy2(clr_path, save_path)
-    subprocess.run(['open', '-R', save_path], capture_output=True)
+    script = f'''
+tell application "System Events"
+    set homeDir to POSIX path of (path to home folder)
+    set dlDir to homeDir & "Downloads/"
+end tell
 
-    return jsonify({'filename': os.path.basename(save_path), 'saved_to': save_path})
+set result to (choose file name default location (POSIX file dlDir) default name "{filename}")
+return POSIX path of result
+'''
+
+    try:
+        result = subprocess.run(
+            ['osascript', '-e', script],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            # User cancelled the dialog
+            return jsonify({'cancelled': True})
+
+        save_path = result.stdout.strip()
+        if not save_path:
+            return jsonify({'cancelled': True})
+
+        shutil.copy2(clr_path, save_path)
+        subprocess.run(['open', '-R', save_path], capture_output=True)
+        return jsonify({'filename': os.path.basename(save_path), 'saved_to': save_path})
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'error': 'Save dialog timed out'}), 500
+    except Exception as exc:
+        return jsonify({'error': f'Failed to save file: {exc}'}), 500
 
 
 if __name__ == '__main__':
