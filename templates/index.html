@@ -447,7 +447,8 @@
       }
 
       setStatus('success',
-        `<strong>${escHtml(data.filename)}</strong> is now available in your macOS color picker.`
+        `<strong>${escHtml(data.filename)}</strong> saved to your color palettes. ` +
+        `If it doesn\u2019t appear yet, close and reopen the color picker panel in your app.`
       );
     } finally {
       btnDownload.textContent = '⬇\u00a0 Download .clr Palette';

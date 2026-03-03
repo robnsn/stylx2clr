@@ -40,4 +40,7 @@ def write_clr(colors: list, output_path: str, palette_name: str = 'ArcGIS Palett
 
     ok = color_list.writeToFile_(output_path)
     if not ok:
-        raise RuntimeError(f'NSColorList.writeToFile_ failed for path: {output_path}')
+        raise RuntimeError(
+            f'NSColorList.writeToFile_ failed for path: '
+            f'{"~/Library/Colors/" if output_path is None else output_path}'
+        )
