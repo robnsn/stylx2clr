@@ -163,7 +163,7 @@ def parse_stylx(path: str) -> list:
             if not content:
                 continue
             try:
-                data = json.loads(content)
+                data = json.loads(content.rstrip('\x00'))
             except (json.JSONDecodeError, TypeError):
                 continue
             _walk(data, name or 'Unnamed', None, results)
