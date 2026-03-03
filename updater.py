@@ -43,8 +43,10 @@ def _parse_ver(v: str) -> tuple:
 
 
 def start_check() -> None:
-    """Kick off a background version check. Called once on app startup."""
+    """Kick off a background version check. Safe to call multiple times."""
     with _lock:
+        if _state['status'] != 'idle':
+            return  # already running or completed
         _state.update(status='checking', latest=None, error=None)
     threading.Thread(target=_check_worker, daemon=True).start()
 
@@ -58,7 +60,7 @@ def _check_worker() -> None:
         with urllib.request.urlopen(req, timeout=5) as r:
             latest = r.read().decode().strip()
     except Exception:
-        _set(status='idle')
+        _set(status='error')
         return
 
     if _parse_ver(latest) > _parse_ver(APP_VERSION):

@@ -99,7 +99,9 @@ def upload():
 
 @app.route('/update/status')
 def update_status():
-    """Return the current state of the background updater."""
+    """Return the current state of the background updater.
+    Lazily triggers the check on first call so dev-mode (flask run) works too."""
+    _updater.start_check()  # no-op if already running or completed
     return jsonify(_updater.get_state())
 
 
