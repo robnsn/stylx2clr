@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 
 import updater as _updater
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, jsonify, render_template, request
 
 from clr_writer import write_clr
 from stylx_parser import parse_stylx
@@ -172,7 +172,11 @@ def debug(token):
 
 @app.route('/download/<token>')
 def download(token):
-    """Generate and serve the .clr file for a previously uploaded .stylx."""
+    """
+    Generate the .clr file, save it to ~/Downloads, and reveal it in Finder.
+    Returns JSON instead of a file stream — pywebview's WebKit does not support
+    blob-URL downloads, so we handle the save on the Python side.
+    """
     if token not in _uploads:
         return jsonify({'error': 'Session not found. Please re-upload the file.'}), 404
 
@@ -191,12 +195,32 @@ def download(token):
     except Exception as exc:
         return jsonify({'error': f'Conversion failed: {exc}'}), 500
 
-    return send_file(
-        clr_path,
-        as_attachment=True,
-        download_name=f'{palette_name}.clr',
-        mimetype='application/octet-stream',
+    filename = f'{palette_name}.clr'
+
+    # Show a native save dialog so the user can choose where to save
+    import tkinter as tk
+    from tkinter import filedialog
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes('-topmost', True)
+    save_path = filedialog.asksaveasfilename(
+        defaultextension='.clr',
+        filetypes=[('Color palette', '*.clr')],
+        initialfile=filename,
+        initialdir=str(Path.home() / 'Downloads'),
+        title='Save Color Palette',
+        parent=root,
     )
+    root.destroy()
+
+    if not save_path:
+        return jsonify({'cancelled': True})
+
+    import subprocess
+    shutil.copy2(clr_path, save_path)
+    subprocess.run(['open', '-R', save_path], capture_output=True)
+
+    return jsonify({'filename': os.path.basename(save_path), 'saved_to': save_path})
 
 
 if __name__ == '__main__':
