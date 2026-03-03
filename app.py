@@ -103,23 +103,6 @@ def update_status():
     return jsonify(_updater.get_state())
 
 
-@app.route('/update/check', methods=['POST'])
-def update_check():
-    """Re-trigger a background version check (e.g. from the menu bar action)."""
-    _updater.start_check(user_initiated=True)
-    return jsonify({'ok': True})
-
-
-@app.route('/update/dismiss', methods=['POST'])
-def update_dismiss():
-    """Persist the version the user has chosen to dismiss."""
-    data = request.get_json(silent=True) or {}
-    version = data.get('version', '')
-    if version:
-        _updater.dismiss_version(version)
-    return jsonify({'ok': True})
-
-
 @app.route('/update/open-download')
 def update_open_download():
     """Open the releases download page in the system browser."""
@@ -267,19 +250,18 @@ if __name__ == '__main__':
         target=lambda: app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False),
         daemon=True,
     ).start()
-    time.sleep(0.5)  # let Flask start before the window tries to load
+    # Poll until Flask is accepting connections instead of using a fixed sleep.
+    # On first launch after install the bundled libraries can take several seconds
+    # to load — 0.5 s is often not enough and produces a blank/error window.
+    _deadline = time.time() + 15
+    while time.time() < _deadline:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _s:
+            if _s.connect_ex(('127.0.0.1', port)) == 0:
+                break
+        time.sleep(0.05)
 
     # Kick off the background update check now that Flask is ready to serve /update/status
     _updater.start_check()
 
-    from webview.menu import Menu, MenuAction
-
-    def _menu_check_for_updates():
-        _updater.start_check(user_initiated=True)
-
     webview.create_window('stylx2clr', url, width=960, height=700, min_size=(600, 500))
-    webview.start(menu=[
-        Menu('stylx2clr', [
-            MenuAction('Check for Updates', _menu_check_for_updates),
-        ]),
-    ])  # blocks until the window is closed, then the process exits
+    webview.start()  # blocks until the window is closed, then the process exits
