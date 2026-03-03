@@ -32,6 +32,28 @@ atexit.register(shutil.rmtree, _TEMP_DIR, ignore_errors=True)
 _uploads: dict[str, tuple[str, str]] = {}
 
 
+def _group_colors(colors: list, palette_name: str) -> list:
+    """
+    Bucket colors by Category, sort buckets alphabetically, preserve per-bucket order.
+    Returns a list of group dicts: [{'name': str, 'colors': [...]}, ...]
+    """
+    seen: list = []
+    buckets: dict = {}
+    for color in colors:
+        g = color.get('group') or ''
+        if g not in buckets:
+            buckets[g] = []
+            seen.append(g)
+        buckets[g].append(color)
+
+    if len(seen) == 1 and seen[0] == '':
+        return [{'name': palette_name, 'colors': buckets['']}]
+    return sorted(
+        [{'name': g or 'Other', 'colors': buckets[g]} for g in seen],
+        key=lambda grp: grp['name'].casefold(),
+    )
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -63,25 +85,7 @@ def upload():
     palette_name = Path(f.filename).stem
     _uploads[token] = (stylx_path, palette_name)
 
-    # Group colors by their Category (preserving order of first appearance)
-    seen: list = []
-    buckets: dict = {}
-    for color in colors:
-        g = color.get('group') or ''
-        if g not in buckets:
-            buckets[g] = []
-            seen.append(g)
-        buckets[g].append(color)
-
-    if len(seen) == 1 and seen[0] == '':
-        # No Category column — present everything as one unlabelled group
-        groups = [{'name': palette_name, 'colors': buckets['']}]
-    else:
-        # Sort groups alphabetically; color order within each group is preserved
-        groups = sorted(
-            [{'name': g or 'Other', 'colors': buckets[g]} for g in seen],
-            key=lambda grp: grp['name'].casefold(),
-        )
+    groups = _group_colors(colors, palette_name)
 
     return jsonify({
         'token': token,
@@ -209,9 +213,13 @@ def download(token):
 
     try:
         colors = parse_stylx(stylx_path)
+        # Flatten groups in the same alphabetical order shown in the preview so
+        # the color picker reflects what the user sees in the UI.
+        groups = _group_colors(colors, unique_name)
+        sorted_colors = [c for g in groups for c in g['colors']]
         # Pass None so NSColorList.writeToFile_(nil) resolves the path itself —
         # Apple's canonical method for registering a palette in ~/Library/Colors/
-        write_clr(colors, None, palette_name=unique_name)
+        write_clr(sorted_colors, None, palette_name=unique_name)
     except RuntimeError as exc:
         return jsonify({'error': str(exc)}), 500
     except Exception as exc:
