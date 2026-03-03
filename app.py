@@ -195,43 +195,21 @@ def download(token):
     except Exception as exc:
         return jsonify({'error': f'Conversion failed: {exc}'}), 500
 
-    filename = f'{palette_name}.clr'
-    downloads_dir = str(Path.home() / 'Downloads')
-
-    # Use native macOS save dialog via osascript
     import subprocess
-    script = f'''
-tell application "System Events"
-    set homeDir to POSIX path of (path to home folder)
-    set dlDir to homeDir & "Downloads/"
-end tell
 
-set result to (choose file name default location (POSIX file dlDir) default name "{filename}")
-return POSIX path of result
-'''
+    downloads_dir = Path.home() / 'Downloads'
+    save_path = downloads_dir / f'{palette_name}.clr'
+
+    # Avoid clobbering an existing file
+    counter = 1
+    while save_path.exists():
+        save_path = downloads_dir / f'{palette_name} ({counter}).clr'
+        counter += 1
 
     try:
-        result = subprocess.run(
-            ['osascript', '-e', script],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-
-        if result.returncode != 0:
-            # User cancelled the dialog
-            return jsonify({'cancelled': True})
-
-        save_path = result.stdout.strip()
-        if not save_path:
-            return jsonify({'cancelled': True})
-
-        shutil.copy2(clr_path, save_path)
-        subprocess.run(['open', '-R', save_path], capture_output=True)
-        return jsonify({'filename': os.path.basename(save_path), 'saved_to': save_path})
-
-    except subprocess.TimeoutExpired:
-        return jsonify({'error': 'Save dialog timed out'}), 500
+        shutil.copy2(clr_path, str(save_path))
+        subprocess.run(['open', '-R', str(save_path)], capture_output=True)
+        return jsonify({'filename': save_path.name, 'saved_to': str(save_path)})
     except Exception as exc:
         return jsonify({'error': f'Failed to save file: {exc}'}), 500
 
