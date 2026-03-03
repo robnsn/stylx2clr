@@ -1,11 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# PyInstaller spec for stylx2clr.
+# PyInstaller spec for stylx2clr — produces a macOS .app bundle.
 #
-# Build on macOS:
+# Build:
 #   pyinstaller stylx2clr.spec
 #
-# Produces:  dist/stylx2clr   (single-file binary)
+# Output:  dist/stylx2clr.app
+# Distribute:  zip -r stylx2clr.zip dist/stylx2clr.app && share the zip
 
 a = Analysis(
     ['app.py'],
@@ -33,20 +34,37 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='stylx2clr',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=True,   # keep visible so users know the server is running
-    disable_windowed_traceback=False,
+    console=False,          # no terminal window
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='stylx2clr',
+)
+
+app = BUNDLE(
+    coll,
+    name='stylx2clr.app',
+    icon=None,              # drop a stylx2clr.icns here to add a custom icon
+    bundle_identifier='com.yourorg.stylx2clr',
+    info_plist={
+        'CFBundleShortVersionString': '1.0.0',
+        'NSHighResolutionCapable': True,
+    },
 )

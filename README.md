@@ -8,17 +8,13 @@ Runs entirely on your machine — your files are never uploaded anywhere.
 
 ---
 
-## Option A — Standalone binary (recommended for teams)
+## Option A — Standalone app (recommended for teams)
 
-Download the pre-built `stylx2clr` binary from the Releases page, then:
+Download `stylx2clr.zip` from the Releases page, unzip it, and double-click
+`stylx2clr.app`. Your browser opens automatically.
 
-```
-# macOS
-chmod +x stylx2clr
-./stylx2clr
-```
-
-The app opens your browser automatically. Close the terminal window to quit.
+To quit: right-click the Dock icon → **Quit** (or press **⌘Q** while the app
+is focused).
 
 ---
 
@@ -40,15 +36,21 @@ python3 app.py
 
 ## Building the binary yourself
 
-You need a Mac to produce a binary that can generate `.clr` files.
+You need a Mac to build (and to use — the `.clr` format is macOS-specific).
 
 ```bash
 pip3 install -r requirements-build.txt
 pyinstaller stylx2clr.spec
+
+# Package for sharing
+zip -r stylx2clr.zip dist/stylx2clr.app
 ```
 
-The finished binary is at `dist/stylx2clr`. Zip it up and share it with your
-team — no Python installation required on their machines.
+Send `stylx2clr.zip` to your team. They unzip and double-click — no Python,
+no terminal, no setup required.
+
+**Tip:** To add a custom Dock icon, place a `stylx2clr.icns` file next to
+`app.py` before building and set `icon='stylx2clr.icns'` in the spec.
 
 ---
 
