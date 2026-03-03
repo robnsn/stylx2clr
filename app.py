@@ -1,12 +1,13 @@
 """
 stylx2clr — local web app
-Run with:  python3 app.py
-Then open: http://localhost:5000
+Run with:  python3 app.py  (or double-click the standalone binary)
+Then open: http://localhost:5000  (browser opens automatically)
 """
 
 import atexit
 import os
 import shutil
+import sys
 import tempfile
 import uuid
 from pathlib import Path
@@ -16,7 +17,10 @@ from flask import Flask, jsonify, render_template, request, send_file
 from clr_writer import write_clr
 from stylx_parser import parse_stylx
 
-app = Flask(__name__)
+# When frozen by PyInstaller, data files live under sys._MEIPASS
+_BASE_DIR = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(__name__, template_folder=os.path.join(_BASE_DIR, 'templates'))
 app.config['MAX_CONTENT_LENGTH'] = 256 * 1024 * 1024  # 256 MB upload limit
 
 # Temp directory shared across the session; cleaned up on exit
@@ -160,7 +164,24 @@ def download(token):
 
 
 if __name__ == '__main__':
-    print('stylx2clr is running.')
-    print('Open http://localhost:5000 in your browser.')
-    print('Press Ctrl+C to stop.')
-    app.run(host='127.0.0.1', port=5000, debug=False)
+    import socket
+    import threading
+    import webbrowser
+
+    def _free_port(start: int = 5000) -> int:
+        """Return the first free TCP port at or after start."""
+        for port in range(start, start + 20):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('127.0.0.1', port))
+                    return port
+                except OSError:
+                    continue
+        return start
+
+    port = _free_port()
+    url = f'http://localhost:{port}'
+    threading.Timer(1.2, lambda: webbrowser.open(url)).start()
+    print(f'stylx2clr  →  {url}')
+    print('Close this window (or press Ctrl+C) to quit.')
+    app.run(host='127.0.0.1', port=port, debug=False)

@@ -3,25 +3,56 @@
 Convert ArcGIS `.stylx` style files into macOS `.clr` color palette files.
 Runs entirely on your machine — your files are never uploaded anywhere.
 
-## Requirements
+> **Note:** The `.clr` format is macOS-specific. Generating palette files
+> requires macOS. Any platform can run the app to preview colours.
 
-- macOS (the `.clr` format is macOS-specific)
-- Python 3.9+
+---
 
-## Setup
+## Option A — Standalone binary (recommended for teams)
 
-```bash
-# Install dependencies (Flask + PyObjC for .clr generation)
-pip3 install -r requirements.txt
+Download the pre-built `stylx2clr` binary from the Releases page, then:
+
+```
+# macOS
+chmod +x stylx2clr
+./stylx2clr
 ```
 
-## Usage
+The app opens your browser automatically. Close the terminal window to quit.
+
+---
+
+## Option B — Run from source
+
+### Requirements
+
+- Python 3.9+
+- macOS (for `.clr` generation; colour preview works on any OS)
+
+### Setup
 
 ```bash
+pip3 install -r requirements.txt
 python3 app.py
 ```
 
-Then open **http://localhost:5000** in your browser.
+---
+
+## Building the binary yourself
+
+You need a Mac to produce a binary that can generate `.clr` files.
+
+```bash
+pip3 install -r requirements-build.txt
+pyinstaller stylx2clr.spec
+```
+
+The finished binary is at `dist/stylx2clr`. Zip it up and share it with your
+team — no Python installation required on their machines.
+
+---
+
+## Usage
 
 1. Drop your `.stylx` file onto the page (or click to browse).
 2. Review the colour swatches extracted from your symbol definitions.
@@ -34,6 +65,8 @@ It then appears in the **Color Palettes** section of the system color picker
 (accessible in any native app via **Format → Show Colors** or `⇧⌘C`).
 
 Alternatively, copy the file manually to `~/Library/Colors/`.
+
+---
 
 ## What gets extracted
 
