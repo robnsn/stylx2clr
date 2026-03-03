@@ -470,7 +470,10 @@
 
   // localStorage key storing the last version the user dismissed
   const _DISMISSED_KEY = 'stylx2clr_dismissed_version';
-  let   _latestVersion = null;
+  let   _latestVersion    = null;
+  // Tracks the last user_check_epoch we've seen; null = not yet initialised
+  // (first poll on startup sets it without triggering the user-check path)
+  let   _lastUserEpoch    = null;
 
   _upDismiss.addEventListener('click', () => {
     if (_latestVersion) {
@@ -489,13 +492,24 @@
 
       if (d.status === 'available' && d.latest) {
         _latestVersion = d.latest;
-        const dismissed = localStorage.getItem(_DISMISSED_KEY);
-        if (dismissed !== d.latest) {
+        const epoch = d.user_check_epoch ?? 0;
+
+        // userInitiated is true only when the epoch advanced after we've already
+        // seen at least one poll (i.e. the menu-bar action fired while the app
+        // was already running, not just from a fresh start).
+        const userInitiated = _lastUserEpoch !== null && epoch > _lastUserEpoch;
+
+        if (userInitiated || localStorage.getItem(_DISMISSED_KEY) !== d.latest) {
           _upMsg.textContent = `v${d.latest} is available.`;
           _upBanner.classList.add('visible');
         }
+
+        _lastUserEpoch = epoch;
+      } else {
+        // For non-available statuses, seed the epoch tracker without touching the banner
+        const epoch = d.user_check_epoch ?? 0;
+        if (_lastUserEpoch === null) _lastUserEpoch = epoch;
       }
-      // All other statuses (checking, up_to_date, idle, error) leave the banner as-is
     } catch (_) { /* network unavailable — silently ignore */ }
   }
 
