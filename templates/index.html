@@ -474,6 +474,7 @@
   _upDismiss.addEventListener('click', () => {
     _dismissed = true;
     _upBanner.classList.remove('visible');
+    clearInterval(_updateInterval);
   });
 
   async function openDownloadPage() {
