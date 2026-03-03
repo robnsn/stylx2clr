@@ -69,5 +69,6 @@ app = BUNDLE(
     info_plist={
         'CFBundleShortVersionString': '1.1.5',
         'NSHighResolutionCapable': True,
+        'NSPrincipalClass': 'NSApplication',
     },
 )

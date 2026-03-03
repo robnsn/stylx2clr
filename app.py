@@ -267,7 +267,15 @@ if __name__ == '__main__':
         target=lambda: app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False),
         daemon=True,
     ).start()
-    time.sleep(0.5)  # let Flask start before the window tries to load
+    # Poll until Flask is accepting connections instead of using a fixed sleep.
+    # On first launch after install the bundled libraries can take several seconds
+    # to load — 0.5 s is often not enough and produces a blank/error window.
+    _deadline = time.time() + 15
+    while time.time() < _deadline:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _s:
+            if _s.connect_ex(('127.0.0.1', port)) == 0:
+                break
+        time.sleep(0.05)
 
     # Kick off the background update check now that Flask is ready to serve /update/status
     _updater.start_check()
