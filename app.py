@@ -6,6 +6,7 @@ Run with:  python3 app.py  (or double-click the standalone binary)
 import atexit
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import uuid
@@ -71,6 +72,10 @@ def upload():
             buckets[g] = []
             seen.append(g)
         buckets[g].append(color)
+
+    # Sort colors within each group alphabetically; group order is kept
+    for bucket in buckets.values():
+        bucket.sort(key=lambda c: c.get('name', '').casefold())
 
     if len(seen) == 1 and seen[0] == '':
         # No Category column — present everything as one unlabelled group
@@ -205,7 +210,11 @@ def download(token):
     except Exception as exc:
         return jsonify({'error': f'Conversion failed: {exc}'}), 500
 
-    return jsonify({'filename': f'{unique_name}.clr', 'saved_to': str(colors_dir / f'{unique_name}.clr')})
+    saved_path = colors_dir / f'{unique_name}.clr'
+    # Reveal the new file selected in a Finder window
+    subprocess.Popen(['open', '-R', str(saved_path)])
+
+    return jsonify({'filename': f'{unique_name}.clr', 'saved_to': str(saved_path)})
 
 
 if __name__ == '__main__':
