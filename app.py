@@ -106,7 +106,17 @@ def update_status():
 @app.route('/update/check', methods=['POST'])
 def update_check():
     """Re-trigger a background version check (e.g. from the menu bar action)."""
-    _updater.start_check()
+    _updater.start_check(user_initiated=True)
+    return jsonify({'ok': True})
+
+
+@app.route('/update/dismiss', methods=['POST'])
+def update_dismiss():
+    """Persist the version the user has chosen to dismiss."""
+    data = request.get_json(silent=True) or {}
+    version = data.get('version', '')
+    if version:
+        _updater.dismiss_version(version)
     return jsonify({'ok': True})
 
 
@@ -265,7 +275,7 @@ if __name__ == '__main__':
     from webview.menu import Menu, MenuAction
 
     def _menu_check_for_updates():
-        _updater.start_check()
+        _updater.start_check(user_initiated=True)
 
     webview.create_window('stylx2clr', url, width=960, height=700, min_size=(600, 500))
     webview.start(menu=[
