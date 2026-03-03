@@ -198,29 +198,24 @@ def download(token):
     filename = f'{palette_name}.clr'
     downloads_dir = str(Path.home() / 'Downloads')
 
-    # Use native macOS save dialog via osascript
     import subprocess
-    script = f'''
-tell application "System Events"
-    set homeDir to POSIX path of (path to home folder)
-    set dlDir to homeDir & "Downloads/"
-end tell
-
-set result to (choose file name default location (POSIX file dlDir) default name "{filename}")
-return POSIX path of result
-'''
-
     try:
         result = subprocess.run(
-            ['osascript', '-e', script],
+            [
+                'osascript', '-e',
+                f'POSIX path of (choose file name default location'
+                f' (POSIX file "{downloads_dir}/") default name "{filename}")',
+            ],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=60,
         )
 
         if result.returncode != 0:
-            # User cancelled the dialog
-            return jsonify({'cancelled': True})
+            # osascript exits non-zero on user cancel (error -128) and on real errors
+            if 'User canceled' in result.stderr or 'canceled' in result.stderr.lower():
+                return jsonify({'cancelled': True})
+            return jsonify({'error': result.stderr.strip() or 'Save dialog failed'}), 500
 
         save_path = result.stdout.strip()
         if not save_path:
