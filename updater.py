@@ -9,6 +9,7 @@ State machine (module-level, thread-safe):
 
 import json
 import os
+import plistlib
 import shlex
 import subprocess
 import sys
@@ -94,9 +95,12 @@ def install_and_relaunch() -> None:
         capture_output=True,
     )
 
-    # Shell script runs after we exit: remove old app, copy new one, relaunch
+    # Shell script runs after we exit: remove old app, copy new one, relaunch.
+    # set -e ensures the script aborts immediately on any failure so a broken
+    # copy never causes the old (unmodified) app to be relaunched.
     script = (
         '#!/bin/bash\n'
+        'set -e\n'
         'sleep 1\n'
         f'rm -rf {shlex.quote(str(old_app))}\n'
         f'cp -R {shlex.quote(new_app)} {shlex.quote(str(old_app))}\n'
@@ -191,6 +195,23 @@ def _download_worker() -> None:
         )
         if not new_app:
             raise RuntimeError('Downloaded zip contained no .app bundle.')
+
+        # Verify the bundled version is actually newer than the running app.
+        # This catches releases where the zip was built before the version bump,
+        # which would otherwise cause an infinite install → relaunch → detect loop.
+        try:
+            plist_path = new_app / 'Contents' / 'Info.plist'
+            with open(plist_path, 'rb') as fh:
+                plist = plistlib.load(fh)
+            bundled_ver = plist.get('CFBundleShortVersionString', '')
+            if bundled_ver and _parse_ver(bundled_ver) <= _parse_ver(APP_VERSION):
+                raise RuntimeError(
+                    f'Downloaded bundle is version {bundled_ver}, which is not '
+                    f'newer than the installed version {APP_VERSION}. '
+                    'The GitHub release may contain an outdated build.'
+                )
+        except (FileNotFoundError, KeyError, ValueError):
+            pass  # Unreadable plist — proceed and let the user decide
 
         _set(status='ready', progress=1.0, new_app_path=str(new_app))
 
