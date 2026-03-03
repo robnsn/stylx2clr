@@ -113,6 +113,16 @@
       background: rgba(0,113,227,0.04);
     }
 
+    .drop-zone.reject {
+      border-color: var(--error-fg);
+      background: var(--error-bg);
+      cursor: not-allowed;
+    }
+
+    .drop-zone.reject * {
+      pointer-events: none;
+    }
+
     .drop-zone input[type="file"] {
       position: absolute;
       inset: 0;
@@ -298,12 +308,21 @@
   /* ── Drag-and-drop ── */
   dropZone.addEventListener('dragover', e => {
     e.preventDefault();
-    dropZone.classList.add('over');
+    const multi = e.dataTransfer.items.length > 1;
+    e.dataTransfer.dropEffect = multi ? 'none' : 'copy';
+    dropZone.classList.toggle('over', !multi);
+    dropZone.classList.toggle('reject', multi);
   });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('over', 'reject');
+  });
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
-    dropZone.classList.remove('over');
+    dropZone.classList.remove('over', 'reject');
+    if (e.dataTransfer.files.length > 1) {
+      setStatus('error', 'Please only convert one file at a time.');
+      return;
+    }
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   });
