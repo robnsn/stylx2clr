@@ -185,31 +185,27 @@ def download(token):
     if not os.path.exists(stylx_path):
         return jsonify({'error': 'Temp file is gone. Please re-upload.'}), 404
 
-    clr_path = stylx_path.replace('.stylx', '.clr')
+    colors_dir = Path.home() / 'Library' / 'Colors'
+    colors_dir.mkdir(parents=True, exist_ok=True)
+
+    # Determine a unique palette name so we don't silently overwrite an existing list
+    unique_name = palette_name
+    counter = 1
+    while (colors_dir / f'{unique_name}.clr').exists():
+        unique_name = f'{palette_name} ({counter})'
+        counter += 1
 
     try:
         colors = parse_stylx(stylx_path)
-        write_clr(colors, clr_path, palette_name=palette_name)
+        # Pass None so NSColorList.writeToFile_(nil) resolves the path itself —
+        # Apple's canonical method for registering a palette in ~/Library/Colors/
+        write_clr(colors, None, palette_name=unique_name)
     except RuntimeError as exc:
         return jsonify({'error': str(exc)}), 500
     except Exception as exc:
         return jsonify({'error': f'Conversion failed: {exc}'}), 500
 
-    colors_dir = Path.home() / 'Library' / 'Colors'
-    colors_dir.mkdir(parents=True, exist_ok=True)
-    save_path = colors_dir / f'{palette_name}.clr'
-
-    # Avoid clobbering an existing file
-    counter = 1
-    while save_path.exists():
-        save_path = colors_dir / f'{palette_name} ({counter}).clr'
-        counter += 1
-
-    try:
-        shutil.copy2(clr_path, str(save_path))
-        return jsonify({'filename': save_path.name, 'saved_to': str(save_path)})
-    except Exception as exc:
-        return jsonify({'error': f'Failed to save file: {exc}'}), 500
+    return jsonify({'filename': f'{unique_name}.clr', 'saved_to': str(colors_dir / f'{unique_name}.clr')})
 
 
 if __name__ == '__main__':
