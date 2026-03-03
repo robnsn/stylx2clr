@@ -12,6 +12,18 @@ import tempfile
 import uuid
 from pathlib import Path
 
+from version import __version__ as APP_VERSION
+
+_UPDATE_VERSION_URL = 'https://raw.githubusercontent.com/robnsn/stylx2clr/main/version.txt'
+_UPDATE_RELEASES_URL = 'https://github.com/robnsn/stylx2clr/releases/latest'
+
+
+def _parse_version(v: str) -> tuple:
+    try:
+        return tuple(int(x) for x in v.strip().split('.') if x.isdigit())
+    except Exception:
+        return (0,)
+
 from flask import Flask, jsonify, render_template, request, send_file
 
 from clr_writer import write_clr
@@ -62,11 +74,46 @@ def upload():
     palette_name = Path(f.filename).stem
     _uploads[token] = (stylx_path, palette_name)
 
+    # Group colors by their Category (preserving order of first appearance)
+    seen: list = []
+    buckets: dict = {}
+    for color in colors:
+        g = color.get('group') or ''
+        if g not in buckets:
+            buckets[g] = []
+            seen.append(g)
+        buckets[g].append(color)
+
+    if len(seen) == 1 and seen[0] == '':
+        # No Category column — present everything as one unlabelled group
+        groups = [{'name': palette_name, 'colors': buckets['']}]
+    else:
+        groups = [{'name': g or 'Other', 'colors': buckets[g]} for g in seen]
+
     return jsonify({
         'token': token,
         'palette_name': palette_name,
         'count': len(colors),
-        'colors': colors,
+        'groups': groups,
+    })
+
+
+@app.route('/check-update')
+def check_update():
+    """Compare the bundled version against version.txt on the main branch."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen(_UPDATE_VERSION_URL, timeout=4) as resp:
+            latest = resp.read().decode().strip()
+    except Exception:
+        return jsonify({'update_available': False})
+
+    update_available = _parse_version(latest) > _parse_version(APP_VERSION)
+    return jsonify({
+        'update_available': update_available,
+        'current': APP_VERSION,
+        'latest': latest,
+        'download_url': _UPDATE_RELEASES_URL,
     })
 
 
