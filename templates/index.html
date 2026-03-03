@@ -409,11 +409,15 @@
   btnDownload.addEventListener('click', async () => {
     if (!currentToken) return;
 
+    // Capture the token so we can tell if a new upload has started by the time
+    // the download response arrives.
+    const tokenAtDownload = currentToken;
+
     btnDownload.textContent = '⏳  Generating .clr…';
     btnDownload.disabled = true;
 
     try {
-      const response = await fetch(`/download/${currentToken}`);
+      const response = await fetch(`/download/${tokenAtDownload}`);
       const data = await response.json();
 
       if (data.cancelled) {
@@ -426,10 +430,14 @@
         return;
       }
 
-      setStatus('success',
-        `<strong>${escHtml(data.filename)}</strong> saved to your color palettes. ` +
-        `If it doesn\u2019t appear yet, restart Keynote.`
-      );
+      // Only update the status if no new file has been uploaded since the
+      // download started; otherwise the upload's own message should stand.
+      if (currentToken === tokenAtDownload) {
+        setStatus('success',
+          `<strong>${escHtml(data.filename)}</strong> saved to your color palettes. ` +
+          `If it doesn\u2019t appear yet, restart Keynote.`
+        );
+      }
     } finally {
       btnDownload.textContent = '⬇\u00a0 Download .clr Palette';
       btnDownload.disabled = false;
