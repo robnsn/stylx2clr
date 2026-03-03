@@ -22,6 +22,7 @@ a = Analysis(
         'werkzeug.serving',
         'sqlite3',
         'webview',
+        'webview.menu',
         'webview.platforms.cocoa',
     ],
     hookspath=[],
