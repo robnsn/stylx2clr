@@ -67,7 +67,7 @@ app = BUNDLE(
     icon=None,              # drop a stylx2clr.icns here to add a custom icon
     bundle_identifier='com.yourorg.stylx2clr',
     info_plist={
-        'CFBundleShortVersionString': '1.1.18',
+        'CFBundleShortVersionString': '1.1.19',
         'NSHighResolutionCapable': True,
         'NSPrincipalClass': 'NSApplication',
     },
