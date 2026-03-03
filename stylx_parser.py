@@ -185,7 +185,9 @@ def parse_stylx(path: str) -> list:
             except (json.JSONDecodeError, TypeError):
                 continue
 
-            group = (category or '').strip()
+            # Use Category if present, otherwise fall back to the symbol name
+            # so colors from the same symbol are at least grouped together.
+            group = (category or name or 'Unnamed').strip()
             item_colors: list = []
             _walk(data, name or 'Unnamed', None, item_colors)
             for c in item_colors:
