@@ -221,14 +221,14 @@
     .swatch-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 4px;
     }
 
     /* ── Individual swatch ── */
     .swatch {
-      width: 44px;
-      height: 44px;
-      border-radius: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
       border: 1px solid rgba(0,0,0,0.12);
       position: relative;
       flex-shrink: 0;
@@ -238,14 +238,14 @@
         linear-gradient(-45deg, #ccc 25%, transparent 25%),
         linear-gradient(45deg, transparent 75%, #ccc 75%),
         linear-gradient(-45deg, transparent 75%, #ccc 75%);
-      background-size: 8px 8px;
-      background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+      background-size: 4px 4px;
+      background-position: 0 0, 0 2px, 2px -2px, -2px 0;
     }
 
     .swatch-fill {
       position: absolute;
       inset: 0;
-      border-radius: 7px;
+      border-radius: 3px;
     }
 
     /* Tooltip */
@@ -298,7 +298,7 @@
     ⬇&nbsp; Download .clr Palette
   </button>
 
-  <div class="palette-header" id="paletteHeader">Preview</div>
+  <div class="palette-header" id="paletteHeader"></div>
   <div class="color-count"   id="colorCount"></div>
   <div id="colorGrid"></div>
 
@@ -448,7 +448,7 @@
 
       setStatus('success',
         `<strong>${escHtml(data.filename)}</strong> saved to your color palettes. ` +
-        `If it doesn\u2019t appear yet, close and reopen the color picker panel in your app.`
+        `If it doesn\u2019t appear yet, restart Keynote.`
       );
     } finally {
       btnDownload.textContent = '⬇\u00a0 Download .clr Palette';
