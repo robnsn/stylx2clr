@@ -195,20 +195,18 @@ def download(token):
     except Exception as exc:
         return jsonify({'error': f'Conversion failed: {exc}'}), 500
 
-    import subprocess
-
-    downloads_dir = Path.home() / 'Downloads'
-    save_path = downloads_dir / f'{palette_name}.clr'
+    colors_dir = Path.home() / 'Library' / 'Colors'
+    colors_dir.mkdir(parents=True, exist_ok=True)
+    save_path = colors_dir / f'{palette_name}.clr'
 
     # Avoid clobbering an existing file
     counter = 1
     while save_path.exists():
-        save_path = downloads_dir / f'{palette_name} ({counter}).clr'
+        save_path = colors_dir / f'{palette_name} ({counter}).clr'
         counter += 1
 
     try:
         shutil.copy2(clr_path, str(save_path))
-        subprocess.run(['open', '-R', str(save_path)], capture_output=True)
         return jsonify({'filename': save_path.name, 'saved_to': str(save_path)})
     except Exception as exc:
         return jsonify({'error': f'Failed to save file: {exc}'}), 500

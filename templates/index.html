@@ -23,7 +23,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      font-family: 'Avenir Next', 'Avenir', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -137,8 +137,6 @@
       cursor: pointer;
       font-size: 0;
     }
-
-    .drop-icon { font-size: 44px; margin-bottom: 12px; }
 
     .drop-label {
       font-size: 17px;
@@ -290,7 +288,6 @@
 
   <div class="drop-zone" id="dropZone">
     <input type="file" id="fileInput" accept=".stylx">
-    <div class="drop-icon">🗂️</div>
     <div class="drop-label">Drop a .stylx file here</div>
     <div class="drop-hint">or click to browse</div>
   </div>
@@ -450,8 +447,7 @@
       }
 
       setStatus('success',
-        `Saved <strong>${escHtml(data.filename)}</strong> — ` +
-        `install it by double-clicking or placing it in <code>~/Library/Colors/</code>.`
+        `<strong>${escHtml(data.filename)}</strong> is now available in your macOS color picker.`
       );
     } finally {
       btnDownload.textContent = '⬇\u00a0 Download .clr Palette';
