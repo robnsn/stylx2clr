@@ -30,7 +30,7 @@ def write_clr(colors: list, output_path: str, palette_name: str = 'ArcGIS Palett
     color_list = AppKit.NSColorList.alloc().initWithName_(palette_name)
 
     for c in colors:
-        ns_color = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(
+        ns_color = AppKit.NSColor.colorWithSRGBRed_green_blue_alpha_(
             float(c['r']),
             float(c['g']),
             float(c['b']),
