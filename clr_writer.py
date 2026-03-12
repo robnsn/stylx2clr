@@ -30,11 +30,13 @@ def write_clr(colors: list, output_path: str, palette_name: str = 'ArcGIS Palett
     color_list = AppKit.NSColorList.alloc().initWithName_(palette_name)
 
     for c in colors:
+        # Quantize to 8-bit precision to match the hex roundtrip that occurs
+        # when a user manually types a hex code into the macOS color picker.
+        r = round(float(c['r']) * 255) / 255.0
+        g = round(float(c['g']) * 255) / 255.0
+        b = round(float(c['b']) * 255) / 255.0
         ns_color = AppKit.NSColor.colorWithDisplayP3Red_green_blue_alpha_(
-            float(c['r']),
-            float(c['g']),
-            float(c['b']),
-            float(c['a']),
+            r, g, b, float(c['a']),
         )
         color_list.setColor_forKey_(ns_color, c['name'])
 
